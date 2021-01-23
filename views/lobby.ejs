@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style type="text/css">
+    .chatbox {
+      bottom: 30%;
+      height: 20%;
+    }
+
+    .foot {
+      position:absolute;
+      width:100%; 
+      height:10%; 
+      left:0; 
+      bottom:0px; 
+      background-color:#CCFF99;
+    }  
+
+    #players {
+      display:flex;
+    }
+
+    #announcement {
+      margin-top: 10vh;
+      color: #272727;
+      text-align: center;
+      font-size: 7vw;
+      animation: fadeIn .5s linear;
+    }
+
+    @keyframes fadeIn{
+      from {
+          opacity: 0;
+      }
+      to {
+          oapcity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="voteContainer">
+    <div id="voteMessage"></div>
+    <div id="voteUser"></div>
+  </div>
+
+  <div class="container">
+    <span id="players"></span>
+    <div id="timer"></div>
+    <div id="announcement">대기중입니다..</div>
+    <button id="startButton">START</button>
+    <div class="chatbox">  
+      <div id="chatLogs"></div>
+    </div>
+    <form class="form-inline foot">
+      <div class="form-group">
+        <label for="msgForm">대기실: </label>
+        <input type="text" class="form-control" id="msgForm">
+      </div>
+      <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>    
+    var socket = io();
+
+    function htmlDecode(input){
+    var e = document.createElement('div');
+    e.innerHTML = input;
+    return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    function timer(time) { 
+      let timer = setInterval(function() {
+        $("#timer").html("<div><strong>" + time + "</strong></div>");
+        if(time == 0) {
+          clearInterval(timer);
+        $("#timer").html('');
+        }
+        time--;
+      }, 1000);
+    }
+    
+
+    var userName = JSON.parse(htmlDecode("<%= JSON.stringify(user.name) %>"));
+    var userEmail = JSON.parse(htmlDecode("<%= JSON.stringify(user.email) %>"));
+    var userNum = 0;
+    var state = 0; //-1: starting, 0: not yet started, 1: night, 2: day, 3: finished
+    
+    //role definitions, to be moved to a JSON file at some point in the near future
+    var roles = {
+    servant: {
+      name: '아충신',
+      group: '선',
+      id: ''
+    },
+    merlin: {
+      name: '멀린',
+      group: '선',
+      id: ''
+      // power: true,
+      // powerFunc: function (socket, chosenPlayer) {
+      // 	socket.emit('announcement', { message: '멀린의 능력으로 ' + chosenPlayer.userName + '님이 악인임을 알아냈습니다.' });
+      // }
+    },
+    percival: {
+      name: '퍼시벌',
+      group: '선',
+      id: ''
+    },
+    mordred: {
+      name: '모드레드',
+      group: '악',
+      id: ''
+    },
+    morgana: {
+      name: '모르가나',
+      group: '악',
+      id: ''
+    }
+    };
+    //end role definitions
+
+    //직업 설정, 셔플
+    var playerRoles = [
+    roles['mordred'],
+    roles['merlin'],
+    roles['servant']
+    ];
+    
+      function shuffle (array) {
+      var m = array.length, t, i;
+    
+      while (m) {
+        i = Math.floor(Math.random() * m--);
+        t = array[m];
+        array[m] = array[i];
+        array[i] = t;
+      }
+    
+      return array;
+      }
+      //까지
+
+      //플레이어 선택 창
+      function selectExpPlayer(players) {
+        for(let i=0; i < players.length;i++) {
+          if(players[i].userName != userName) {
+          $("#voteMessage").append('<div>함께할 원정대원을 선택해주세요.</div>');
+          $("#voteUser").append(`<button id="voteExpButton">` + players[i].userName + `</button>`);
+          $("#voteExpButton").click(function(){
+            socket.emit('expedition-leader', players[i].userName);
+            $("#voteUser").html('');
+          });
+          }
+        }
+      }
+
+
+    $("#startButton").hide();
+    
+    $("#startButton").click(function(){
+      state = -1;
+      playerRoles = shuffle(playerRoles);
+      socket.emit("start", playerRoles);
+    });
+
+    socket.on("gamestart", (roles) => {
+      $("#startButton").hide();
+      $("#chatLogs").append("<div>게임이 시작합니다...</strong></div>");
+      socket.emit("assignRoles", socket.id, roles, userName);
+    });
+
+    socket.on('assignRolesToClient', (assignedRoles) => {
+      $("#announcement").html("<div><strong>" + '당신은 ' + assignedRoles.name + '입니다.<br>당신은 ' + assignedRoles.group + '입니다.' + "</strong></div>");
+      playerRoles.find(name => name = assignedRoles.name).id = socket.id;
+    });
+
+    socket.on('expedition-selection', (name, players)=> {
+      //name: exp-leader
+      //players: .id .userName
+      console.log('exp selc called');
+      $("#announcement").html("<div><strong>" + name + '님이 원정대장입니다.<br>함께할 원정대원을 토의하세요.</strong></div>');
+      console.log(players);
+      timer(10);
+      setTimeout(function() {
+        $("#announcement").html("<div><strong>" + name + "님이 원정대원을 선택중입니다...</strong></div>");
+        if( name == userName ) {
+        selectExpPlayer(players);
+        }
+      }, 11000);
+        // TODO :  selectPlayer.ejs를 불러옴; html type은 image로 하고, 카드 형태의 이미지를 설정, onclick에 emit한다.
+    });
+
+
+    socket.on('expedition-vote', (name)=> {
+      $("#announcement").html("<div><strong>" + '원정대장이 ' + name + '을 선택하였습니다.</strong></div>');
+      // TODO : 선택된 원정대원에 대하여 투표를 시행한다.
+      socket.emit('expedition-vote-submit');
+    });
+
+    socket.on('expedition', () => {
+      // TODO : 원정대원들에게 성공 실패 카드를 나눠준다.
+      socket.emit('expedition-result');
+    });
+
+
+    socket.emit("login", {
+      name: userName,
+      userid: userEmail
+    });
+
+    socket.on("logout", function(data, arr, num) {
+      $("#chatLogs").append("<div>" + data + " has disconnected from server.</strong></div>");
+      userNum = num;
+      $("#players").html("");
+      $("#startButton").hide();
+      while(num != 0) {
+        $("#players").append("<div>" + arr[num-1] + "</div>");
+        num--;
+      }
+    });
+
+    socket.on("login", function(data, arr, num) {
+      $("#chatLogs").append("<div><strong>" + data + "</strong> has joined</div>");
+      userNum = num;
+      $("#players").html("");
+      while(num != 0) {
+        $("#players").append("<div>" + arr[num-1] + "</div>");
+        num--;
+      }
+    });
+
+    socket.on("enableStart", function() { 
+      $("#startButton").show();
+    })
+
+    // 서버로부터의 메시지가 수신되면
+    socket.on("chat", function(data) {
+      $("#chatLogs").append("<div>" + data.msg + " : from <strong>" + data.from.name + "</strong></div>");
+    });
+
+    // Send 버튼이 클릭되면
+    $("form").submit(function(e) {
+      e.preventDefault();
+      var $msgForm = $("#msgForm");
+
+      // 서버로 메시지를 전송한다.
+      socket.emit("chat", { msg: $msgForm.val() });
+      $msgForm.val("");
+    });
+
+
+
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,25 @@
+<h1> 로그인 </h1>
+<%- include ('./partials/messages') %>
+
+<form action="/users/login" method="POST">
+<div>
+<label for="email">Email</label>
+<input
+type="email"
+name="email"
+placeholder="Enter Email"
+/>
+</div>
+<div>
+    <label for="password">Password</label>
+    <input
+      type="password"
+      name="password"
+      placeholder="Enter Password"
+    />
+  
+</div>
+<button type="submit" class="btn btn-primary btn-block">Login</button>
+<div></div>
+<p>처음 방문하셨나요?<a href="/users/register">회원가입</a></p>
+</form>
