@@ -127,22 +127,18 @@ io.on('connection', function(socket) {
           io.to(players[assignCounter].id).emit('assignRolesToClient', roles[assignCounter]);
           console.log(roles[assignCounter]);
           console.log('assign counter: ' + assignCounter);
-
           assignCounter++;
       });
       setTimeout(function() {
         expLeader = players[gamelogic.genRandomUser(connectCounter)].userName;
         console.log('exp leader is : ' + expLeader);
-        io.emit('expedition-selection', expLeader, players);
-      }, 5000);
+        io.emit('expedition-selection', expLeader, players, round);
+      }, 1000);
 
     }
 
   });
 
-  socket.on('expedition-selec', (players) => {
-    
-  });
 
   socket.on('expedition-leader', (name) => {
     // TODO : 선택한 원정대원을 받고, 투표를 진행한다.

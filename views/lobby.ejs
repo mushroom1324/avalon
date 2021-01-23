@@ -10,8 +10,8 @@
 
     .foot {
       position:absolute;
-      width:100%; 
-      height:10%; 
+      width:100%;
+      height:10%;
       left:0; 
       bottom:0px; 
       background-color:#CCFF99;
@@ -25,7 +25,7 @@
       margin-top: 10vh;
       color: #272727;
       text-align: center;
-      font-size: 7vw;
+      font-size: 5vw;
       animation: fadeIn .5s linear;
     }
 
@@ -83,7 +83,6 @@
         time--;
       }, 1000);
     }
-    
 
     var userName = JSON.parse(htmlDecode("<%= JSON.stringify(user.name) %>"));
     var userEmail = JSON.parse(htmlDecode("<%= JSON.stringify(user.email) %>"));
@@ -92,35 +91,36 @@
     
     //role definitions, to be moved to a JSON file at some point in the near future
     var roles = {
-    servant: {
-      name: '아충신',
-      group: '선',
-      id: ''
-    },
-    merlin: {
-      name: '멀린',
-      group: '선',
-      id: ''
-      // power: true,
-      // powerFunc: function (socket, chosenPlayer) {
-      // 	socket.emit('announcement', { message: '멀린의 능력으로 ' + chosenPlayer.userName + '님이 악인임을 알아냈습니다.' });
-      // }
-    },
-    percival: {
-      name: '퍼시벌',
-      group: '선',
-      id: ''
-    },
-    mordred: {
-      name: '모드레드',
-      group: '악',
-      id: ''
-    },
-    morgana: {
-      name: '모르가나',
-      group: '악',
-      id: ''
-    }
+      servant: {
+        name: '아충신',
+        group: '선',
+        id: ''
+      },
+      merlin: {
+        name: '멀린',
+        group: '선',
+        id: ''
+      },
+      percival: {
+        name: '퍼시벌',
+        group: '선',
+        id: ''
+      },
+      mordred: {
+        name: '모드레드',
+        group: '악',
+        id: ''
+      },
+      morgana: {
+        name: '모르가나',
+        group: '악',
+        id: ''
+      },
+      minion: {
+        name: '미니언',
+        group: '악',
+        id: ''
+      }
     };
     //end role definitions
 
@@ -128,37 +128,52 @@
     var playerRoles = [
     roles['mordred'],
     roles['merlin'],
-    roles['servant']
+    roles['percival'],
+    roles['servant'],
+    roles['servant'],
+    roles['servant'],
+    roles['minion']
     ];
-    
-      function shuffle (array) {
-      var m = array.length, t, i;
-    
-      while (m) {
-        i = Math.floor(Math.random() * m--);
-        t = array[m];
-        array[m] = array[i];
-        array[i] = t;
-      }
-    
-      return array;
-      }
-      //까지
 
-      //플레이어 선택 창
-      function selectExpPlayer(players) {
-        for(let i=0; i < players.length;i++) {
-          if(players[i].userName != userName) {
-          $("#voteMessage").append('<div>함께할 원정대원을 선택해주세요.</div>');
-          $("#voteUser").append(`<button id="voteExpButton">` + players[i].userName + `</button>`);
-          $("#voteExpButton").click(function(){
-            socket.emit('expedition-leader', players[i].userName);
-            $("#voteUser").html('');
+    function shuffle (array) {
+    var m = userNum, t, i;
+  
+    while (m) {
+      i = Math.floor(Math.random() * m--);
+      t = array[m];
+      array[m] = array[i];
+      array[i] = t;
+    }
+
+    return array;
+    }
+    //까지
+    var voteCounter = 0;
+    var votePlayers = [];
+    //플레이어 선택 창
+    function selectExpPlayer(players, round) {
+      console.log(votePlayers);
+      if(round == 1) {
+        if(voteCounter == 0) {
+          $("#voteMessage").append('<div>첫번째 원정대원을 선택해주세요.</div>');
+          votePlayers.forEach(element => {
+            $("#voteUser").append(`<button id="voteExpButton" onclick="sendExp('${element.userName}', ${round})">` + element.userName + `</button>`);
           });
-          }
+        } else if(voteCounter == 1) {
+          votePlayers.forEach(element => {
+            $("#voteUser").append(`<button id="voteExpButton" onclick="sendExp('${element.userName}', ${round})">` + element.userName + `</button>`);
+          });
         }
       }
+    }
 
+    function sendExp(name, round) {
+      socket.emit('expedition-leader', name);
+      $("#voteUser").html('');
+      voteCounter++;
+      votePlayers.splice(votePlayers.indexOf(name),1);
+      selectExpPlayer(votePlayers, round);
+    }
 
     $("#startButton").hide();
     
@@ -169,6 +184,8 @@
     });
 
     socket.on("gamestart", (roles) => {
+      $("nav").hide();
+      $("hr").hide();
       $("#startButton").hide();
       $("#chatLogs").append("<div>게임이 시작합니다...</strong></div>");
       socket.emit("assignRoles", socket.id, roles, userName);
@@ -179,24 +196,25 @@
       playerRoles.find(name => name = assignedRoles.name).id = socket.id;
     });
 
-    socket.on('expedition-selection', (name, players)=> {
+    socket.on('expedition-selection', (name, players, round)=> {
       //name: exp-leader
       //players: .id .userName
       console.log('exp selc called');
       $("#announcement").html("<div><strong>" + name + '님이 원정대장입니다.<br>함께할 원정대원을 토의하세요.</strong></div>');
       console.log(players);
-      timer(10);
+      timer(1);
       setTimeout(function() {
         $("#announcement").html("<div><strong>" + name + "님이 원정대원을 선택중입니다...</strong></div>");
-        if( name == userName ) {
-        selectExpPlayer(players);
+        if( 'ww' == userName ) {  
+          players.forEach(element => {votePlayers.push(element);});
+          selectExpPlayer(players, round);
         }
-      }, 11000);
+      }, 1000);
         // TODO :  selectPlayer.ejs를 불러옴; html type은 image로 하고, 카드 형태의 이미지를 설정, onclick에 emit한다.
     });
 
-
     socket.on('expedition-vote', (name)=> {
+      console.log(name);
       $("#announcement").html("<div><strong>" + '원정대장이 ' + name + '을 선택하였습니다.</strong></div>');
       // TODO : 선택된 원정대원에 대하여 투표를 시행한다.
       socket.emit('expedition-vote-submit');
@@ -206,7 +224,6 @@
       // TODO : 원정대원들에게 성공 실패 카드를 나눠준다.
       socket.emit('expedition-result');
     });
-
 
     socket.emit("login", {
       name: userName,
@@ -252,8 +269,6 @@
       socket.emit("chat", { msg: $msgForm.val() });
       $msgForm.val("");
     });
-
-
 
   </script>
 </body>
