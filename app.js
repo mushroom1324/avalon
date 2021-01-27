@@ -12,6 +12,9 @@ const { on } = require('./models/user');
 const server = require('http').createServer(app);
 const gamelogic = require('./public/js/gamelogic');
 global.io = require('socket.io')(server);
+const SEC = 10;
+const MS = 11000;
+const SYSMS = 5000;
 
 app.use(express.static(__dirname + '/public'));
 
@@ -49,9 +52,15 @@ var connectCounter = 0;
 var assignCounter = 0;
 var players = [];
 var onlineUsers = [];
-var round = 1;
-
+var round = 1;  
+var voteCounter = 0;
+var voteYes = 0;
+var voteFailed = 0;
 var expLeader = '';
+var expLeaderIndex = 0;
+var _expPlayers = [];
+var expCounter = 0;
+var expYes = 0;
 
 io.on('connection', function(socket) {
   connectCounter++;
@@ -130,10 +139,11 @@ io.on('connection', function(socket) {
           assignCounter++;
       });
       setTimeout(function() {
-        expLeader = players[gamelogic.genRandomUser(connectCounter)].userName;
+        expLeaderIndex = gamelogic.genRandomUser(connectCounter);
+        expLeader = players[expLeaderIndex].userName;
         console.log('exp leader is : ' + expLeader);
         io.emit('expedition-selection', expLeader, players, round);
-      }, 1000);
+      }, SYSMS);
 
     }
 
@@ -141,23 +151,90 @@ io.on('connection', function(socket) {
 
 
   socket.on('expedition-leader', (name) => {
-    // TODO : 선택한 원정대원을 받고, 투표를 진행한다.
-    io.emit('expedition-vote', name);
-    // TODO : 시간제한이 끝나면 무투표 처리된다.
-    
+    io.emit('expedition-selec-alert', name);
   });
 
-  socket.on('expedition-vote-submit', () => {
-    // TODO : 투표를 종합하여 결과를 알려준다.
-    // TODO : 찬성이 많으면 원정대원들에게 성공 실패 카드를 준다.
-    io.to().emit('expedition')
+  socket.on("expedition-selection-over", (expPlayers) => {
+    expPlayers.forEach(element => {
+      _expPlayers.push(element);
+    });
+    io.emit('expedition-vote', expPlayers);
+  });
+
+
+  socket.on('expedition-vote-result', (result) => {
+    io.emit('expedition-vote-card');
+
+    if(result == 1 || 2) {
+      voteYes++;
+    }
+    voteCounter++;
+
+    if(voteCounter == connectCounter) {
+      voteCounter = 0; // 초기화
+      setTimeout(function() {
+        if(voteYes > (connectCounter / 2)) {
+          voteYes = 0; // 초기화
+          io.emit('expedition-vote-alert', 1);
+          setTimeout(() => {
+            io.emit('expedition-vote-start-alert');
+            _expPlayers.forEach(element => {
+              players.forEach(_element => {
+                if(_element.userName == element) {
+                  io.to(_element.id).emit('expedition');
+                }               
+              });
+            });
+          }, SYSMS);
+        } else {
+          voteYes = 0; // 초기화
+          io.emit('expedition-vote-alert', 0);
+          voteFailed++;
+          socket.emit('expedition-vote-failed');
+          setTimeout(() => {
+            _expPlayers = [];
+            expLeaderIndex++;
+            if(expLeaderIndex<=connectCounter) {
+              expLeaderIndex = 0;
+            }
+            expLeader = players[expLeaderIndex].userName;
+            console.log('exp leader is : ' + expLeader);
+            io.emit('expedition-selection', expLeader, players, round);
+          }, SYSMS);
+        }
+      }, SYSMS);
+      
+    }
+    
     // TODO : 부결되면 다음 유저가 원정대장이 된다.
   })
 
-  socket.on('expedition-result', () => {
-    // TODO : 실패 카드가 하나라도 있으면 실패, 모두 성공하면 성공 처리한다.
-    // TODO : 다음 라운드를 진행한다.
-    round++;
+  socket.on('expedition-exp-result', (result) => {
+    expCounter++;
+    if(result == 1) {
+      expYes++;
+    }
+    if(expCounter == connectCounter) {
+      setTimeout(() => {
+        if(expYes == connectCounter) {
+          io.emit('expedition-exp-alert', 1);
+        } else {
+          io.emit('expedition-exp-alert', 0);
+        }
+        setTimeout(() => {
+          _expPlayers = [];
+          round++;
+          expLeaderIndex++;
+          if(expLeaderIndex<=connectCounter) {
+            expLeaderIndex = 0;
+          }
+          expLeader = players[expLeaderIndex].userName;
+          console.log('exp leader is : ' + expLeader);
+          io.emit('expedition-selection', expLeader, players, round);
+        }, SYSMS);
+      }, SYSMS);
+    }
+
   });
 
 });
