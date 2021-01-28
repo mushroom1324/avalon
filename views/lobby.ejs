@@ -109,6 +109,7 @@
   </style>
 </head>
 <body>
+  <div id="playerCard"></div>
   <div id="voteCard"></div>
   <div id="voteContainer">
     <div id="timer"></div>
@@ -165,7 +166,7 @@
     var userName = JSON.parse(htmlDecode("<%= JSON.stringify(user.name) %>"));
     var userEmail = JSON.parse(htmlDecode("<%= JSON.stringify(user.email) %>"));
     var userNum = 0;
-    var state = 0; //-1: starting, 0: not yet started, 1: night, 2: day, 3: finished
+    var state = 1; //1 대기 0시작
     var voteFailed = 0;
     
     //role definitions, to be moved to a JSON file at some point in the near future
@@ -214,14 +215,14 @@
     roles['mordred'],
     roles['merlin'],
     roles['percival'],
-    roles['servant'],
+    roles['morgana'],
     roles['servant'],
     roles['servant'],
     roles['minion']
     ];
 
-    function shuffle (array) {
-    var m = userNum, t, i;
+    function shuffle (array, number) {
+    var m = number, t, i;
   
     while (m) {
       i = Math.floor(Math.random() * m--);
@@ -233,8 +234,12 @@
     return array;
     }
     //까지
+    const YES = 1;
+    const NO = 0;
+    const TIMEOUT = 2;
     const SEC = 10;
     const MS = 13000;
+    const SYSMS = 5000;
     var voteCounter = 0;
     var votePlayers = [];
     var expPlayers = [];
@@ -245,94 +250,90 @@
     function selectExpPlayer(players, round) {
 
       //dev
-      console.log(players.length);
       if(players.length == 2) {
-        handleRound(players, 2);
+        handleRound(players, 2, round);
       }
 
       if(players.length == 5) {
         if(round == 1 || 3) {
-          handleRound(players, 2);
+          handleRound(players, 2, round);
         } else if(round == 2||4||5) {
-          handleRound(players, 3);
+          handleRound(players, 3, round);
         }
       } else if (players.length == 6) {
         if(round == 1) {
-          handleRound(players, 2);
+          handleRound(players, 2, round);
         } else if(round == 2 || 4) {
-          handleRound(players, 3);
+          handleRound(players, 3, round);
         } else if(round == 3||5) {
-          handleRound(players, 4);
+          handleRound(players, 4, round);
         } 
       } else if ( players.length == 7) {
         if(round == 1) {
-          handleRound(players, 2);
+          handleRound(players, 2, round);
         } else if (round == 2 || 3) {
-          handleRound(players, 3);
+          handleRound(players, 3, round);
         } else if (round == 4 || 5) {
-            handleRound(players, 4);
+            handleRound(players, 4, round);
         }
-      } else if ( players.length < 7) {
+      } else if ( players.length > 7) {
         if(round==1) {
-          handleRound(players, 3);
+          handleRound(players, 3, round);
         } else if(round == 2||3) {
-          handleRound(players,4);
+          handleRound(players,4, round);
         } else if(round == 4||5) {
-          handleRound(players,5);
+          handleRound(players,5, round);
         }
       }
     }
 
-    function handleRound(players, number) {
-      console.log(players);
+    function handleRound(players, number, round) {
       isSelected = false;
       if(voteCounter == 0) {
 
         timer(SEC);
         timeout = setTimeout(() => {
           if(isSelected == false) {
-            sendExp(players[Math.floor(Math.random()*players.length)], round);
-            voteCounter++;
+            sendExp(players[Math.floor(Math.random()*players.length)],number, round);
           }
         }, MS);
 
         $("#voteMessage").append('<div>첫번째 원정대원을 선택해주세요.</div>');
         $("#voteMessage").append('<div>시간 초과시 무작위 선택됩니다.</div>');
         players.forEach(element => {
-          $("#voteUser").append(`<button onclick="sendExp('${element}', ${round})">` + element + `</button>`);
+          $("#voteUser").append(`<button onclick="sendExp('${element}', ${number}, ${round})">` + element + `</button>`);
         });
       } else if(voteCounter == 1) {
 
         timer(SEC);
         timeout = setTimeout(() => {
           if(isSelected == false) {
-            sendExp(players[Math.floor(Math.random()*players.length)], round);
-            voteCounter++;
+            sendExp(players[Math.floor(Math.random()*players.length)], number, round);
           }
         }, MS);
 
         $("#voteMessage").append('<div>두번째 원정대원을 선택해주세요.</div>');
         players.forEach(element => {
-          $("#voteUser").append(`<button onclick="sendExp('${element}', ${round})">` + element + `</button>`);
+          $("#voteUser").append(`<button onclick="sendExp('${element}', ${number}, ${round})">` + element + `</button>`);
         });
       } else if(voteCounter == 2) {
         if(number == 2) {
           socket.emit("expedition-selection-over", expPlayers);
           expPlayers = [];
           votePlayers = []; // 투표 선택지 초기화
+          voteCounter = 0;
         } else if(number == 3) {
 
           timer(SEC);
           timeout = setTimeout(() => {
             if(isSelected == false) {
-              sendExp(players[Math.floor(Math.random()*players.length)], round);
-              voteCounter++;
+              sendExp(players[Math.floor(Math.random()*players.length)], number, round);
             }
           }, MS);
 
           $("#voteMessage").append('<div>세번째 원정대원을 선택해주세요.</div>');
           players.forEach(element => {
-            $("#voteUser").append(`<button onclick="sendExp('${element}', ${round})">` + element + `</button>`);
+            $("#voteUser").append(`<button onclick="sendExp('${element}', ${number}, ${round})">` + element + `</button>`);
           });
 
         }
@@ -341,19 +342,19 @@
           socket.emit("expedition-selection-over", expPlayers);
           expPlayers = [];
           votePlayers = []; // 투표 선택지 초기화
+          voteCounter = 0;
         } else if(number == 4) {
 
           timer(SEC);
           timeout = setTimeout(() => {
             if(isSelected == false) {
-              sendExp(players[Math.floor(Math.random()*players.length)], round);
-              voteCounter++;
+              sendExp(players[Math.floor(Math.random()*players.length)], number, round);
             }
           }, MS);
 
           $("#voteMessage").append('<div>네번째 원정대원을 선택해주세요.</div>');
           players.forEach(element => {
-            $("#voteUser").append(`<button onclick="sendExp('${element}', ${round})">` + element + `</button>`);
+            $("#voteUser").append(`<button onclick="sendExp('${element}', ${number}, ${round})">` + element + `</button>`);
           });
 
         }
@@ -362,32 +363,32 @@
           socket.emit("expedition-selection-over", expPlayers);
           expPlayers = [];
           votePlayers = []; // 투표 선택지 초기화
+          voteCounter = 0;
         } else if(number == 5) {
 
           timer(SEC);
           timeout = setTimeout(() => {
             if(isSelected == false) {
-              sendExp(players[Math.floor(Math.random()*players.length)], round);
-              voteCounter++;
+              sendExp(players[Math.floor(Math.random()*players.length)], number, round);
             }
           }, MS);
 
           $("#voteMessage").append('<div>다섯번째 원정대원을 선택해주세요.</div>');
           players.forEach(element => {
-            $("#voteUser").append(`<button onclick="sendExp('${element}', ${round})">` + element + `</button>`);
+            $("#voteUser").append(`<button onclick="sendExp('${element}', ${number}, ${round})">` + element + `</button>`);
           });
-
-        }
-      } else if(voteCounter == 3) {
-        if(number == 4) {
-          socket.emit("expedition-selection-over", expPlayers);
-          expPlayers = [];
-          votePlayers = []; // 투표 선택지 초기화
-        }
-      }
+        } else if(voteCounter == 5) {
+          if(number == 4) {
+            socket.emit("expedition-selection-over", expPlayers);
+            expPlayers = [];
+            votePlayers = []; // 투표 선택지 초기화
+            voteCounter = 0;
+          }
+        } 
+      } 
     }
 
-    function sendExp(name, round) {
+    function sendExp(name, number, round) {
       isSelected = true;
       clearTimeout(timeout);
       clearTimeout(timerCount);
@@ -398,7 +399,7 @@
       voteCounter++;
       votePlayers.splice(votePlayers.indexOf(name),1);
       expPlayers.push(name);
-      selectExpPlayer(votePlayers, round);
+      handleRound(votePlayers, number, round);
     }
 
     function emitVoteResult(result) {
@@ -408,7 +409,7 @@
       $("#timer").html('');
       socket.emit('expedition-vote-result', result);
       $("#voteUser").html('');
-      if(result == 1) {
+      if(result == YES) {
         $("#announcement").html("<div><strong>당신은 원정에 찬성하셨습니다...</strong></div>");
       } else if(result == 0) {
         $("#announcement").html("<div><strong>당신은 원정에 반대하셨습니다...</strong></div>");
@@ -421,9 +422,9 @@
       $("#voteUser").html('');
       $("#voteMessage").html('');
       socket.emit('expedition-exp-result', result);
-      if(result == 1) {
+      if(result == YES) {
         $("#announcement").html("<div><strong>당신은 성공 카드를 내셨습니다...</strong></div>");
-      } else if(result == 0) {
+      } else if(result == NO) {
         $("#announcement").html("<div><strong>당신은 실패 카드를 내셨습니다...</strong></div>");
       }
     }
@@ -431,8 +432,8 @@
     $("#startButton").hide();
     
     $("#startButton").click(function(){
-      state = -1;
-      playerRoles = shuffle(playerRoles);
+      state = 0;
+      playerRoles = shuffle(playerRoles, userNum);
       socket.emit("start", playerRoles);
     });
 
@@ -451,17 +452,44 @@
       playerStatus.name = assignedRoles.name;
       playerStatus.group = assignedRoles.group;
     });
+    
+    socket.on('create-role-card', (userData) => {
+      if(playerStatus.name == '멀린') {
+        $("#playerCard").append("<div>멀린</div>");
+        $("#playerCard").append("<div>멀린의 능력으로 " + userData.find(element => element.role == '모르가나').userName +"님이 모르가나임을 확인했습니다.</div>");        
+      }
+      if(playerStatus.name == '모드레드') {
+        $("#playerCard").append("<div>모드레드</div>");
+        $("#playerCard").append("<div>" + userData.find(element => element.role == '모르가나').userName +"님은 당신의 수하인 모르가나입니다.</div>");        
+      }
+      if(playerStatus.name == '모르가나') {
+        $("#playerCard").append("<div>모르가나</div>");
+        $("#playerCard").append("<div>" + userData.find(element => element.role == '모드레드').userName +"님은 당신이 섬기는 모드레드입니다.</div>");        
+      }
+      if(playerStatus.name == '퍼시벌') {
+        $("#playerCard").append("<div>퍼시벌</div>");
+        var arr = [];
+        arr.push(userData.find(element => element.role == '모르가나').userName);
+        arr.push(userData.find(element => element.role == '멀린').userName);
+        shuffle(arr, arr.length);
+        $("#playerCard").append("<div>퍼시벌의 능력으로 " + arr[0] + "님과 " + arr[1] +"님을 확인했습니다.</div>");
+      }
+      if(playerStatus.name == '아충신') {
+        $("#playerCard").append("<div>아충신</div>");
+        $("#playerCard").append("<div>당신은 아서 왕을 섬기는 충성스러운 신하입니다..</div>");   
+      }
+    });
 
     socket.on('expedition-selection', (name, players, round)=> {
       //name: exp-leader
       //players: .id .userName
-      console.log('exp selc called');
       $("#announcement").html("<div><strong>" + name + '님이 원정대장입니다.<br>함께할 원정대원을 토의하세요.</strong></div>');
-      console.log(players);
       timer(SEC);
       setTimeout(function() {
         $("#announcement").html("<div><strong>" + name + "님이 원정대원을 선택중입니다...</strong></div>");
         if( name == userName ) {  
+          console.log('pushing players to votePlayers. players is: ' + players);
+          console.log('votePlayers before being pushed is : ' + votePlayers);
           players.forEach(element => {votePlayers.push(element.userName);});
           selectExpPlayer(votePlayers, round);
         }
@@ -477,31 +505,40 @@
     socket.on('expedition-vote', (arr) => {
       setTimeout(() => {
         var isVoted = false;
-        $("#announcement").html("<div><strong>" + arr[0] + '님과 ' + arr[1] + '님의 원정에 찬성하십니까?</strong></div>');
+        if(arr.length == 2) {
+          $("#announcement").html("<div><strong>" + arr[0] + '님과 ' + arr[1] + '님의 원정에 찬성하십니까?</strong></div>');
+        } else if(arr.length == 3) {
+          $("#announcement").html("<div><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + '님의 원정에 찬성하십니까?</strong></div>');
+        } else if(arr.length == 4) {
+          $("#announcement").html("<div><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + ', ' + arr[3] + '님의 원정에 찬성하십니까?</strong></div>');
+        } else if(arr.length == 5) {
+          $("#announcement").html("<div><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + ', ' + arr[3] + ', ' + arr[4] + '님의 원정에 찬성하십니까?</strong></div>');
+        }
         timer(SEC);
-        $("#voteUser").append(`<button onclick="emitVoteResult('1')">찬성</button>`);
-        $("#voteUser").append(`<button onclick="emitVoteResult('0')">반대</button>`);
+        $("#voteUser").append(`<button onclick="emitVoteResult(${YES})">찬성</button>`);
+        $("#voteUser").append(`<button onclick="emitVoteResult(${NO})">반대</button>`);
         timeout = setTimeout(() => {
           if(isVoted == false) {
-            emitVoteResult('2');
+            emitVoteResult(TIMEOUT);
             $("#voteUser").html('');
           }
         }, MS);
-      }, 5000);
+      }, SYSMS);
     });
 
     socket.on('expedition-vote-card', () => {
       $("#voteCard").append(`<img class="card" src="/images/testcard.png">`);
     });
 
-    socket.on('expedition-vote-alert', (result) => {
+    socket.on('expedition-vote-alert', (result, num = 0) => {
       $("#voteCard").html('');
       if(result ==1) {
         $("#announcement").html("<div><strong>원정 투표에 통과하였습니다!</strong></div>");
       } else {
         $("#announcement").html("<div><strong>원정 투표에 통과하지 못하였습니다!</strong></div>");
-        voteFailed++;
-        //TODO : voteFailed가 5가 되면 게임 패배 로직 여기다 작성
+        if(num != 5) {
+          $("#announcement").append("<div><strong>" + (5-num) + "번 더 투표를 통과하지 못하면 악이 승리합니다..</strong></div>");
+        }
       }
     });
 
@@ -521,7 +558,7 @@
 
     socket.on('expedition-exp-alert', (result) => {
       $("#voteCard").html('');
-      if(result ==1) {
+      if(result == YES) {
         $("#announcement").html("<div><strong>원정에 성공하였습니다!</strong></div>");
       } else {
         $("#announcement").html("<div><strong>원정에 실패하였습니다!</strong></div>");
@@ -529,13 +566,17 @@
       // TODO : 상단에 성공/실패토큰
     });
 
+
+    //게임의 승리/패배 로직=
+    socket.on('expedition-vote-failed', () => {
+        $("#announcement").html("<div><strong>투표에 다섯 번 실패했습니다! 모드레드와 그의 수하들이 승리합니다!</strong></div>");
+    })
+
+
     socket.emit("login", {
       name: userName,
       userid: userEmail
     });
-
-
-      
 
     socket.on("logout", function(data, arr, num) {
       $("#chatLogs").append("<div>" + data + " has disconnected from server.</strong></div>");

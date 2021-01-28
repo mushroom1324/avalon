@@ -48,10 +48,10 @@ app.use(session({
 //Routes
 app.use('/',require('./routes/index'));
 app.use('/users',require('./routes/users'));
+app.locals.state = 1;
 var connectCounter = 0;
-var assignCounter = 0;
 var players = [];
-var onlineUsers = [];
+var playingUsers = [];
 var round = 1;  
 var voteCounter = 0;
 var voteYes = 0;
@@ -61,7 +61,6 @@ var expLeaderIndex = 0;
 var _expPlayers = [];
 var expCounter = 0;
 var expYes = 0;
-
 io.on('connection', function(socket) {
   connectCounter++;
   console.log(connectCounter);
@@ -69,16 +68,17 @@ io.on('connection', function(socket) {
     io.emit('enableStart');
   }
 
+
   // 접속한 클라이언트의 정보가 수신되면
-  socket.on('login', function(data) {
+socket.on('login', function(data) {
     console.log('Client logged-in:\n name:' + data.name + '\n userid: ' + data.userid);
 
     // socket에 클라이언트 정보를 저장한다
     socket.name = data.name;
     socket.userid = data.userid;
-    onlineUsers.push(data.name);
+    playingUsers.push(data.name);
     // 접속된 모든 클라이언트에게 메시지를 전송한다
-    io.emit('login', data.name, onlineUsers, connectCounter);
+    io.emit('login', data.name, playingUsers, connectCounter);
   });
 
   // 클라이언트로부터의 메시지가 수신되면
@@ -93,17 +93,7 @@ io.on('connection', function(socket) {
       msg: data.msg
     };
 
-    // 메시지를 전송한 클라이언트를 제외한 모든 클라이언트에게 메시지를 전송한다
-    // socket.broadcast.emit('chat', msg);
-
-    // 메시지를 전송한 클라이언트에게만 메시지를 전송한다
-    // socket.emit('s2c chat', msg);
-
-    // 접속된 모든 클라이언트에게 메시지를 전송한다
     io.emit('chat', msg);
-
-    // 특정 클라이언트에게만 메시지를 전송한다
-    // io.to(id).emit('s2c chat', data);
   });
 
   // force client disconnect from server
@@ -115,12 +105,13 @@ io.on('connection', function(socket) {
     console.log('user disconnected: ' + socket.name);
     connectCounter--;
     console.log(connectCounter);
-    onlineUsers.splice(onlineUsers.indexOf(socket.name),1);
-    io.emit('logout', socket.name, onlineUsers, connectCounter);
+    playingUsers.splice(playingUsers.indexOf(socket.name),1);
+    io.emit('logout', socket.name, playingUsers, connectCounter);
   });
 
   //게임로직
   socket.on('start', (roles) => {
+    app.locals.state = 0;
     io.emit('gamestart', roles);
   });
 
@@ -131,13 +122,18 @@ io.on('connection', function(socket) {
     }
     players.push(userData);
     if(players.length == connectCounter) {
-      players.forEach(function () {
-          roles[assignCounter].id = players[assignCounter].id;
-          io.to(players[assignCounter].id).emit('assignRolesToClient', roles[assignCounter]);
-          console.log(roles[assignCounter]);
-          console.log('assign counter: ' + assignCounter);
-          assignCounter++;
+      let assignCounter = 0;
+      players.forEach(element => {
+        roles[assignCounter].id = element.id;
+        players[assignCounter].role = roles[assignCounter].name;
+        io.to(element.id).emit('assignRolesToClient', roles[assignCounter]);
+        assignCounter++;
       });
+      
+      //직업별 카드 생성
+      console.log(players[0].role);
+      io.emit('create-role-card', players);
+
       setTimeout(function() {
         expLeaderIndex = gamelogic.genRandomUser(connectCounter);
         expLeader = players[expLeaderIndex].userName;
@@ -164,13 +160,16 @@ io.on('connection', function(socket) {
 
   socket.on('expedition-vote-result', (result) => {
     io.emit('expedition-vote-card');
-
-    if(result == 1 || 2) {
+    console.log('result : ' + result);
+    console.log('PrevoteYes : ' + voteYes);
+    if(result != 0) {
       voteYes++;
     }
     voteCounter++;
+    console.log('voteYes : ' + voteYes);
 
     if(voteCounter == connectCounter) {
+      console.log('voteYes : ' + voteYes);
       voteCounter = 0; // 초기화
       setTimeout(function() {
         if(voteYes > (connectCounter / 2)) {
@@ -188,13 +187,21 @@ io.on('connection', function(socket) {
           }, SYSMS);
         } else {
           voteYes = 0; // 초기화
-          io.emit('expedition-vote-alert', 0);
+          voteCounter = 0; // 초기화
           voteFailed++;
+          io.emit('expedition-vote-alert', 0, voteFailed);
           socket.emit('expedition-vote-failed');
+
+          // 투표 5번 실패하면 패배하는 로직
+          if(voteFailed >= 5) {
+            io.emit('vote-fail-end');
+          }
+          // 까지
+
           setTimeout(() => {
             _expPlayers = [];
             expLeaderIndex++;
-            if(expLeaderIndex<=connectCounter) {
+            if(expLeaderIndex>=connectCounter) {
               expLeaderIndex = 0;
             }
             expLeader = players[expLeaderIndex].userName;
@@ -206,7 +213,6 @@ io.on('connection', function(socket) {
       
     }
     
-    // TODO : 부결되면 다음 유저가 원정대장이 된다.
   })
 
   socket.on('expedition-exp-result', (result) => {
@@ -214,7 +220,7 @@ io.on('connection', function(socket) {
     if(result == 1) {
       expYes++;
     }
-    if(expCounter == connectCounter) {
+    if(expCounter == _expPlayers.length) {
       setTimeout(() => {
         if(expYes == connectCounter) {
           io.emit('expedition-exp-alert', 1);
@@ -222,10 +228,12 @@ io.on('connection', function(socket) {
           io.emit('expedition-exp-alert', 0);
         }
         setTimeout(() => {
+          expCounter = 0;
+          expYes = 0;
           _expPlayers = [];
           round++;
           expLeaderIndex++;
-          if(expLeaderIndex<=connectCounter) {
+          if(expLeaderIndex>=connectCounter) {
             expLeaderIndex = 0;
           }
           expLeader = players[expLeaderIndex].userName;

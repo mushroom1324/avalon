@@ -103,6 +103,7 @@ router.get('/dashboard',ensureAuthenticated, (req,res)=>{
 })
 
 router.get('/lobby',ensureAuthenticated, (req,res)=>{
+
     res.render('lobby',{
         user: req.user,
         layout: './layoutLogout'
