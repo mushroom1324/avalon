@@ -4,20 +4,56 @@
   <meta charset="utf-8">
   <style type="text/css">
 
+    .tokenContainer {
+      text-align: center;
+      position: absolute;
+      top: 1%;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .heartContainer {
+      text-align: center;
+      position: absolute;
+      top: 17%;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
     .card {
       display: inline-block;
       margin-left: 1vw;
       margin-right: 1vw;
-      animation: fadeIn .2s;
     }
 
-    #voteCard {
+    .voteCard {
       position: absolute;
       top:50%;
       left:50%;
       transform: translateX(-50%) translateY(-50%);
       white-space: nowrap;
     }
+
+    .gather {
+      position: absolute;
+      top:50%;
+      left:50%;
+      transform: translateX(-50%) translateY(-50%);
+      animation: slide 1.0s;
+    }
+
+
+    @keyframes slide {
+      from {
+        top:200%;
+      }
+      to {
+        top:50%;
+      }
+    }
+
 
     .players-name {
       align-self: center;
@@ -76,19 +112,27 @@
     }
 
     #announcement {
-      margin-top: 10vh;
       color: #272727;
       text-align: center;
-      font-size: 5vw;
+      font-size: 3vw;
+    }
+
+    .fadeIn {
       animation: fadeIn .5s linear;
+    }
+
+    #timer {
+      text-align: center;
     }
 
     @keyframes fadeIn{
       from {
           opacity: 0;
+          filter: blur(4px);
       }
       to {
           opacity: 1;
+          filter: blur(0);
       }
     }
 
@@ -105,20 +149,90 @@
       left: 50%;
       top: 50%;
       transform: translateX(-50%) translateY(-50%);
+      font-size: 2.5vw;
+    }
+
+    /* The flip card container - set the width and height to whatever you want. We have added the border property to demonstrate that the flip itself goes out of the box on hover (remove perspective if you don't want the 3D effect */
+    .flip-card {
+      background-color: transparent;
+      width: 150px;
+      height: 200px;
+      border: 1px solid #f1f1f1;
+      perspective: 1000px; /* Remove this if you don't want the 3D effect */
+    }
+
+    /* This container is needed to position the front and back side */
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.8s;
+      transform-style: preserve-3d;
+    }
+
+    /* Do an horizontal flip when you move the mouse over the flip box container */
+    .flip-card:hover .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* Position the front and back side */
+    .flip-card-front, .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden; /* Safari */
+      backface-visibility: hidden;
+    }
+
+    /* Style the front side (fallback if image is missing) */
+    .flip-card-front {
+      background-color: #bbb;
+      color: black;
+    }
+
+    /* Style the back side */
+    .flip-card-back {
+      background-color: dodgerblue;
+      color: white;
+      transform: rotateY(180deg);
     }
   </style>
 </head>
 <body>
-  <div id="playerCard"></div>
-  <div id="voteCard"></div>
+  <div class="flip-card">
+    <div class="flip-card-inner">
+      <div class="flip-card-front">
+        <img src="/images/card.png" alt="Avatar">
+      </div>
+      <div class="flip-card-back">
+        <div class="playerCard"></div>
+      </div>
+    </div>
+  </div>
+  <div class="tokenContainer">
+    <img id="token1" src="/images/token.png">
+    <img id="token2" src="/images/token.png">
+    <img id="token3" src="/images/token.png">
+    <img id="token4" src="/images/token.png">
+    <img id="token5" src="/images/token.png">
+  </div>
+  <div class="heartContainer">
+    <img src="/images/heart.png" id="heart1">
+    <img src="/images/heart.png" id="heart2">
+    <img src="/images/heart.png" id="heart3">
+    <img src="/images/heart.png" id="heart4">
+    <img src="/images/heart.png" id="heart5">
+  </div>
+  <div class="voteCard"></div>
   <div id="voteContainer">
-    <div id="timer"></div>
     <div id="voteMessage"></div>
     <div id="voteUser"></div>
   </div>
 
   <div class="container">
     <span id="players"></span>
+    <div id="timer"></div>
     <div id="announcement">대기중입니다..</div>
     <button id="startButton">START</button>
     <form class="form-inline foot">
@@ -238,8 +352,8 @@
     const NO = 0;
     const TIMEOUT = 2;
     const SEC = 10;
-    const MS = 13000;
-    const SYSMS = 5000;
+    const MS = 3000;
+    const SYSMS = 3000;
     var voteCounter = 0;
     var votePlayers = [];
     var expPlayers = [];
@@ -410,11 +524,14 @@
       socket.emit('expedition-vote-result', result);
       $("#voteUser").html('');
       if(result == YES) {
-        $("#announcement").html("<div><strong>당신은 원정에 찬성하셨습니다...</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>당신은 원정에 찬성하셨습니다...</strong></div>");
+        $(".announce").addClass('fadeIn');
       } else if(result == 0) {
-        $("#announcement").html("<div><strong>당신은 원정에 반대하셨습니다...</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>당신은 원정에 반대하셨습니다...</strong></div>");
+        $(".announce").addClass('fadeIn');
       } else if(result == 2) {
-        $("#announcement").html("<div><strong>시간이 초과되어 찬성 처리되었습니다...</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>시간이 초과되어 찬성 처리되었습니다...</strong></div>");
+        $(".announce").addClass('fadeIn');
       }
     }
 
@@ -423,13 +540,18 @@
       $("#voteMessage").html('');
       socket.emit('expedition-exp-result', result);
       if(result == YES) {
-        $("#announcement").html("<div><strong>당신은 성공 카드를 내셨습니다...</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>당신은 성공 카드를 내셨습니다...</strong></div>");
+        $(".announce").addClass('fadeIn');
       } else if(result == NO) {
-        $("#announcement").html("<div><strong>당신은 실패 카드를 내셨습니다...</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>당신은 실패 카드를 내셨습니다...</strong></div>");
+        $(".announce").addClass('fadeIn');
       }
     }
 
     $("#startButton").hide();
+    $(".tokenContainer").hide();
+    $(".heartContainer").hide();
+    $(".flip-card").hide();
     
     $("#startButton").click(function(){
       state = 0;
@@ -437,16 +559,91 @@
       socket.emit("start", playerRoles);
     });
 
+    socket.on('reset', ()=> {
+      playerStatus = {
+        name: '',
+        group: ''
+      };
+      userNum = 0;
+      state = 1; //1 대기 0시작
+      voteFailed = 0;
+    
+      roles = {
+        servant: {
+          name: '아충신',
+          group: '선',
+          id: '',
+          _name: ''
+        },
+        merlin: {
+          name: '멀린',
+          group: '선',
+          id: '',
+          _name: ''
+        },
+        percival: {
+          name: '퍼시벌',
+          group: '선',
+          id: '',
+          _name: ''
+        },
+        mordred: {
+          name: '모드레드',
+          group: '악',
+          id: '',
+          _name: ''
+        },
+        morgana: {
+          name: '모르가나',
+          group: '악',
+          id: '',
+          _name: ''
+        },
+        minion: {
+          name: '미니언',
+          group: '악',
+          id: '',
+          _name: ''
+        }
+      };
+      playerRoles = [
+        roles['mordred'],
+        roles['merlin'],
+        roles['percival'],
+        roles['morgana'],
+        roles['servant'],
+        roles['servant'],
+        roles['minion']
+      ];
+      voteCounter = 0;
+      votePlayers = [];
+      expPlayers = [];
+      isSelected = false;
+      timeout = 0;
+      $(".tokenContainer").hide();
+      $(".heartContainer").hide();
+      $(".flip-card").hide();
+      $("nav").show();
+      $("hr").show();
+      $("#chatLogs").append("<div>게임이 종료되었습니다...</strong></div>");
+
+      socket.emit('checkusers');
+    });
+
     socket.on("gamestart", (roles) => {
       $("nav").hide();
       $("hr").hide();
       $("#startButton").hide();
+      $(".tokenContainer").show();
+      $(".heartContainer").show();
+      $(".flip-card").show();
       $("#chatLogs").append("<div>게임이 시작합니다...</strong></div>");
       socket.emit("assignRoles", socket.id, roles, userName);
     });
 
     socket.on('assignRolesToClient', (assignedRoles) => {
-      $("#announcement").html("<div><strong>" + '당신은 ' + assignedRoles.name + '입니다.<br>당신은 ' + assignedRoles.group + '입니다.' + "</strong></div>");
+      $("#announcement").html("<div class='announce'><strong>" + '당신은 ' + assignedRoles.name + '입니다.<br>당신은 ' + assignedRoles.group + '입니다.' + "</strong></div>");
+      $(".announce").addClass('fadeIn');
       playerRoles.find(name => name = assignedRoles.name).id = socket.id;
       playerRoles.find(name => name = assignedRoles.name)._name = userName;
       playerStatus.name = assignedRoles.name;
@@ -455,38 +652,40 @@
     
     socket.on('create-role-card', (userData) => {
       if(playerStatus.name == '멀린') {
-        $("#playerCard").append("<div>멀린</div>");
-        $("#playerCard").append("<div>멀린의 능력으로 " + userData.find(element => element.role == '모르가나').userName +"님이 모르가나임을 확인했습니다.</div>");        
+        $(".playerCard").append("<div>멀린</div>");
+        $(".playerCard").append("<div>멀린의 능력으로 " + userData.find(element => element.role == '모르가나').userName +"님이 모르가나임을 확인했습니다.</div>");        
       }
       if(playerStatus.name == '모드레드') {
-        $("#playerCard").append("<div>모드레드</div>");
-        $("#playerCard").append("<div>" + userData.find(element => element.role == '모르가나').userName +"님은 당신의 수하인 모르가나입니다.</div>");        
+        $(".playerCard").append("<div>모드레드</div>");
+        $(".playerCard").append("<div>" + userData.find(element => element.role == '모르가나').userName +"님은 당신의 수하인 모르가나입니다.</div>");        
       }
       if(playerStatus.name == '모르가나') {
-        $("#playerCard").append("<div>모르가나</div>");
-        $("#playerCard").append("<div>" + userData.find(element => element.role == '모드레드').userName +"님은 당신이 섬기는 모드레드입니다.</div>");        
+        $(".playerCard").append("<div>모르가나</div>");
+        $(".playerCard").append("<div>" + userData.find(element => element.role == '모드레드').userName +"님은 당신이 섬기는 모드레드입니다.</div>");        
       }
       if(playerStatus.name == '퍼시벌') {
-        $("#playerCard").append("<div>퍼시벌</div>");
+        $(".playerCard").append("<div>퍼시벌</div>");
         var arr = [];
         arr.push(userData.find(element => element.role == '모르가나').userName);
         arr.push(userData.find(element => element.role == '멀린').userName);
         shuffle(arr, arr.length);
-        $("#playerCard").append("<div>퍼시벌의 능력으로 " + arr[0] + "님과 " + arr[1] +"님을 확인했습니다.</div>");
+        $(".playerCard").append("<div>퍼시벌의 능력으로 " + arr[0] + "님과 " + arr[1] +"님을 확인했습니다.</div>");
       }
       if(playerStatus.name == '아충신') {
-        $("#playerCard").append("<div>아충신</div>");
-        $("#playerCard").append("<div>당신은 아서 왕을 섬기는 충성스러운 신하입니다..</div>");   
+        $(".playerCard").append("<div>아충신</div>");
+        $(".playerCard").append("<div>당신은 아서 왕을 섬기는 충성스러운 신하입니다..</div>");   
       }
     });
 
     socket.on('expedition-selection', (name, players, round)=> {
       //name: exp-leader
       //players: .id .userName
-      $("#announcement").html("<div><strong>" + name + '님이 원정대장입니다.<br>함께할 원정대원을 토의하세요.</strong></div>');
+      $("#announcement").html("<div class='announce'><strong>" + name + '님이 원정대장입니다.<br>함께할 원정대원을 토의하세요.</strong></div>');
+      $(".announce").addClass('fadeIn');
       timer(SEC);
       setTimeout(function() {
-        $("#announcement").html("<div><strong>" + name + "님이 원정대원을 선택중입니다...</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>" + name + "님이 원정대원을 선택중입니다...</strong></div>");
+        $(".announce").addClass('fadeIn');
         if( name == userName ) {  
           console.log('pushing players to votePlayers. players is: ' + players);
           console.log('votePlayers before being pushed is : ' + votePlayers);
@@ -498,7 +697,9 @@
 
     socket.on('expedition-selec-alert', (name)=> {
       console.log(name);
-      $("#announcement").html("<div><strong>" + '원정대장이 ' + name + '을 선택하였습니다.</strong></div>');
+      $("#announcement").html("<div class='announce'><strong>" + '원정대장이 ' + name + '을 선택하였습니다.</strong></div>');
+      $(".announce").addClass('fadeIn');
+
       socket.emit('expedition-vote-submit')
     });
 
@@ -506,13 +707,17 @@
       setTimeout(() => {
         var isVoted = false;
         if(arr.length == 2) {
-          $("#announcement").html("<div><strong>" + arr[0] + '님과 ' + arr[1] + '님의 원정에 찬성하십니까?</strong></div>');
+          $("#announcement").html("<div class='announce'><strong>" + arr[0] + '님과 ' + arr[1] + '님의 원정에 찬성하십니까?</strong></div>');
+          $(".announce").addClass('fadeIn');
         } else if(arr.length == 3) {
-          $("#announcement").html("<div><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + '님의 원정에 찬성하십니까?</strong></div>');
+          $("#announcement").html("<div class='announce'><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + '님의 원정에 찬성하십니까?</strong></div>');
+          $(".announce").addClass('fadeIn');
         } else if(arr.length == 4) {
-          $("#announcement").html("<div><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + ', ' + arr[3] + '님의 원정에 찬성하십니까?</strong></div>');
+          $("#announcement").html("<div class='announce'><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + ', ' + arr[3] + '님의 원정에 찬성하십니까?</strong></div>');
+          $(".announce").addClass('fadeIn');
         } else if(arr.length == 5) {
-          $("#announcement").html("<div><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + ', ' + arr[3] + ', ' + arr[4] + '님의 원정에 찬성하십니까?</strong></div>');
+          $("#announcement").html("<div class='announce'><strong>" + arr[0] + ', ' + arr[1] + ', ' + arr[2] + ', ' + arr[3] + ', ' + arr[4] + '님의 원정에 찬성하십니까?</strong></div>');
+          $(".announce").addClass('fadeIn');
         }
         timer(SEC);
         $("#voteUser").append(`<button onclick="emitVoteResult(${YES})">찬성</button>`);
@@ -526,24 +731,33 @@
       }, SYSMS);
     });
 
+    let cardCounter = 0;
     socket.on('expedition-vote-card', () => {
-      $("#voteCard").append(`<img class="card" src="/images/testcard.png">`);
+      $(".voteCard").append(`<img class="card" src="/images/testcard.png">`);
+      $(".card").addClass('gather');
+      cardCounter++
     });
 
     socket.on('expedition-vote-alert', (result, num = 0) => {
-      $("#voteCard").html('');
+      $(".voteCard").html('');
       if(result ==1) {
-        $("#announcement").html("<div><strong>원정 투표에 통과하였습니다!</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>원정 투표에 통과하였습니다!</strong></div>");
+        $(".announce").addClass('fadeIn');
       } else {
-        $("#announcement").html("<div><strong>원정 투표에 통과하지 못하였습니다!</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>원정 투표에 통과하지 못하였습니다!</strong></div>");
+        $(".announce").addClass('fadeIn');
+        $("#heart" + num).hide();
+        
         if(num != 5) {
-          $("#announcement").append("<div><strong>" + (5-num) + "번 더 투표를 통과하지 못하면 악이 승리합니다..</strong></div>");
+          $("#announcement").append("<div class='announce'><strong>" + (5-num) + "번 더 투표를 통과하지 못하면 악이 승리합니다..</strong></div>");
+          $(".announce").addClass('fadeIn');  
         }
       }
     });
 
     socket.on('expedition-vote-start-alert', () => {
-        $("#announcement").html("<div><strong>원정대원들이 성공/실패 여부를 결정중입니다...</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>원정대원들이 성공/실패 여부를 결정중입니다...</strong></div>");
+        $(".announce").addClass('fadeIn');
     })
    
     socket.on('expedition', () => {
@@ -553,24 +767,39 @@
     });
 
     socket.on('expedition-exp-card', () => {
-      $("#voteCard").append(`<div>CARD</div>`);
+      $(".voteCard").append(`<div>CARD</div>`);
     });
 
-    socket.on('expedition-exp-alert', (result) => {
-      $("#voteCard").html('');
+    socket.on('expedition-exp-alert', (result, round) => {
+      $(".voteCard").html('');
       if(result == YES) {
-        $("#announcement").html("<div><strong>원정에 성공하였습니다!</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>원정에 성공하였습니다!</strong></div>");
+        $(".announce").addClass('fadeIn');
+        $("#token" + round).attr("src", "/images/token-succ.png");
       } else {
-        $("#announcement").html("<div><strong>원정에 실패하였습니다!</strong></div>");
+        $("#announcement").html("<div class='announce'><strong>원정에 실패하였습니다!</strong></div>");
+        $(".announce").addClass('fadeIn');
+        $("#token" + round).attr("src", "/images/token-fail.png");
       }
       // TODO : 상단에 성공/실패토큰
     });
 
 
     //게임의 승리/패배 로직=
-    socket.on('expedition-vote-failed', () => {
-        $("#announcement").html("<div><strong>투표에 다섯 번 실패했습니다! 모드레드와 그의 수하들이 승리합니다!</strong></div>");
+    socket.on('vote-fail-end', () => {
+        $("#announcement").html("<div class='announce'><strong>투표에 다섯 번 실패했습니다! 모드레드와 그의 수하들이 승리합니다!</strong></div>");
+        $(".announce").addClass('fadeIn');
     })
+
+    socket.on('win', ()=> {
+        $("#announcement").html("<div class='announce'><strong>원정에 세 번 성공했습니다! 아서 왕의 수하들이 승리합니다!</strong></div>")
+        $(".announce").addClass('fadeIn');
+    })
+    
+    socket.on('fail', ()=> {
+        $("#announcement").html("<div class='announce'><strong>원정에 세 번 실패했습니다! 모드레드와 그의 수하들이 승리합니다!</strong></div>");
+        $(".announce").addClass('fadeIn');
+    });
 
 
     socket.emit("login", {

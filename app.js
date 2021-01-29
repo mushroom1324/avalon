@@ -13,8 +13,8 @@ const server = require('http').createServer(app);
 const gamelogic = require('./public/js/gamelogic');
 global.io = require('socket.io')(server);
 const SEC = 10;
-const MS = 11000;
-const SYSMS = 5000;
+const MS = 3000;
+const SYSMS = 3000;
 
 app.use(express.static(__dirname + '/public'));
 
@@ -49,6 +49,7 @@ app.use(session({
 app.use('/',require('./routes/index'));
 app.use('/users',require('./routes/users'));
 app.locals.state = 1;
+var succ = 0, fail = 0;
 var connectCounter = 0;
 var players = [];
 var playingUsers = [];
@@ -61,6 +62,24 @@ var expLeaderIndex = 0;
 var _expPlayers = [];
 var expCounter = 0;
 var expYes = 0;
+
+function reset() {
+  app.locals.state = 1;
+  succ = 0, fail = 0;
+  players = [];
+  playingUsers = [];
+  round = 1;  
+  voteCounter = 0;
+  voteYes = 0;
+  voteFailed = 0;
+  expLeader = '';
+  expLeaderIndex = 0;
+  _expPlayers = [];
+  expCounter = 0;
+  expYes = 0;
+  io.emit('reset');
+}
+
 io.on('connection', function(socket) {
   connectCounter++;
   console.log(connectCounter);
@@ -107,6 +126,12 @@ socket.on('login', function(data) {
     console.log(connectCounter);
     playingUsers.splice(playingUsers.indexOf(socket.name),1);
     io.emit('logout', socket.name, playingUsers, connectCounter);
+  });
+
+  socket.on('checkUsers', () => {
+    if(connectCounter >= 2) {
+      io.emit('enableStart');
+    }
   });
 
   //게임로직
@@ -166,10 +191,8 @@ socket.on('login', function(data) {
       voteYes++;
     }
     voteCounter++;
-    console.log('voteYes : ' + voteYes);
 
-    if(voteCounter == connectCounter) {
-      console.log('voteYes : ' + voteYes);
+    if(voteCounter == connectCounter +1) {
       voteCounter = 0; // 초기화
       setTimeout(function() {
         if(voteYes > (connectCounter / 2)) {
@@ -190,24 +213,23 @@ socket.on('login', function(data) {
           voteCounter = 0; // 초기화
           voteFailed++;
           io.emit('expedition-vote-alert', 0, voteFailed);
-          socket.emit('expedition-vote-failed');
 
           // 투표 5번 실패하면 패배하는 로직
           if(voteFailed >= 5) {
             io.emit('vote-fail-end');
+            reset();
+          } else if(voteFailed < 5) {
+            setTimeout(() => {
+              _expPlayers = [];
+              expLeaderIndex++;
+              if(expLeaderIndex>=connectCounter) {
+                expLeaderIndex = 0;
+              }
+              expLeader = players[expLeaderIndex].userName;
+              console.log('exp leader is : ' + expLeader);
+              io.emit('expedition-selection', expLeader, players, round);
+            }, SYSMS);
           }
-          // 까지
-
-          setTimeout(() => {
-            _expPlayers = [];
-            expLeaderIndex++;
-            if(expLeaderIndex>=connectCounter) {
-              expLeaderIndex = 0;
-            }
-            expLeader = players[expLeaderIndex].userName;
-            console.log('exp leader is : ' + expLeader);
-            io.emit('expedition-selection', expLeader, players, round);
-          }, SYSMS);
         }
       }, SYSMS);
       
@@ -223,23 +245,44 @@ socket.on('login', function(data) {
     if(expCounter == _expPlayers.length) {
       setTimeout(() => {
         if(expYes == connectCounter) {
-          io.emit('expedition-exp-alert', 1);
-        } else {
-          io.emit('expedition-exp-alert', 0);
-        }
-        setTimeout(() => {
-          expCounter = 0;
-          expYes = 0;
-          _expPlayers = [];
-          round++;
-          expLeaderIndex++;
-          if(expLeaderIndex>=connectCounter) {
-            expLeaderIndex = 0;
+          io.emit('expedition-exp-alert', 1, round);
+          succ++;
+
+          if(succ == 3) {
+            setTimeout(() => {
+              io.emit('win');
+              reset();
+            }, SYSMS);
           }
-          expLeader = players[expLeaderIndex].userName;
-          console.log('exp leader is : ' + expLeader);
-          io.emit('expedition-selection', expLeader, players, round);
-        }, SYSMS);
+
+        } else {
+          io.emit('expedition-exp-alert', 0, round);
+          fail++;
+
+          if(fail == 3) {
+            setTimeout(() => {
+              io.emit('fail');
+              reset();
+            }, SYSMS);
+          }
+
+        }
+
+        if(succ != 3 && fail != 3) {
+          setTimeout(() => {
+            expCounter = 0;
+            expYes = 0;
+            _expPlayers = [];
+            round++;
+            expLeaderIndex++;
+            if(expLeaderIndex>=connectCounter) {
+              expLeaderIndex = 0;
+            }
+            expLeader = players[expLeaderIndex].userName;
+            console.log('exp leader is : ' + expLeader);
+            io.emit('expedition-selection', expLeader, players, round);
+          }, SYSMS);
+        }
       }, SYSMS);
     }
 
