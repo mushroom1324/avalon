@@ -5,6 +5,7 @@ const User = require("../models/user");
 const bcrypt = require('bcrypt');
 const passport = require('passport');
 const {ensureAuthenticated} = require("../config/auth.js");
+const {checkState} = require("../config/auth.js");
 
 //login handle
 router.get('/login',(req,res)=>{
@@ -102,7 +103,7 @@ router.get('/dashboard',ensureAuthenticated, (req,res)=>{
         });
 })
 
-router.get('/lobby',ensureAuthenticated, (req,res)=>{
+router.get('/lobby',ensureAuthenticated,checkState, (req,res)=>{
 
     res.render('lobby',{
         user: req.user,
@@ -110,7 +111,7 @@ router.get('/lobby',ensureAuthenticated, (req,res)=>{
         });
 })
 
-router.get('/ingame',ensureAuthenticated, (req,res)=>{
+router.get('/ingame',ensureAuthenticated,checkState, (req,res)=>{
     res.render('ingame',{
         user: req.user,
         layout: ''

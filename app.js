@@ -12,9 +12,9 @@ const { on } = require('./models/user');
 const server = require('http').createServer(app);
 const gamelogic = require('./public/js/gamelogic');
 global.io = require('socket.io')(server);
-const SEC = 10;
+const SEC = 3;
 const MS = 3000;
-const SYSMS = 3000;
+const SYSMS = 5000;
 
 app.use(express.static(__dirname + '/public'));
 
@@ -48,7 +48,8 @@ app.use(session({
 //Routes
 app.use('/',require('./routes/index'));
 app.use('/users',require('./routes/users'));
-app.locals.state = 1;
+
+global.state = 1;
 var succ = 0, fail = 0;
 var connectCounter = 0;
 var players = [];
@@ -64,7 +65,7 @@ var expCounter = 0;
 var expYes = 0;
 
 function reset() {
-  app.locals.state = 1;
+  global.state = 1;
   succ = 0, fail = 0;
   players = [];
   playingUsers = [];
@@ -136,7 +137,7 @@ socket.on('login', function(data) {
 
   //게임로직
   socket.on('start', (roles) => {
-    app.locals.state = 0;
+    global.state = 0;
     io.emit('gamestart', roles);
   });
 
@@ -184,7 +185,7 @@ socket.on('login', function(data) {
 
 
   socket.on('expedition-vote-result', (result) => {
-    io.emit('expedition-vote-card');
+    io.emit('expedition-vote-card', result);
     console.log('result : ' + result);
     console.log('PrevoteYes : ' + voteYes);
     if(result != 0) {
@@ -192,7 +193,7 @@ socket.on('login', function(data) {
     }
     voteCounter++;
 
-    if(voteCounter == connectCounter +1) {
+    if(voteCounter == connectCounter) {
       voteCounter = 0; // 초기화
       setTimeout(function() {
         if(voteYes > (connectCounter / 2)) {

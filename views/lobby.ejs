@@ -22,38 +22,91 @@
       white-space: nowrap;
     }
 
-    .card {
-      display: inline-block;
-      margin-left: 1vw;
-      margin-right: 1vw;
-    }
-
     .voteCard {
-      position: absolute;
-      top:50%;
-      left:50%;
-      transform: translateX(-50%) translateY(-50%);
-      white-space: nowrap;
     }
 
-    .gather {
+    .voteCard-inner {
+      top:50%;
+      left:50%;
+      position: relative;
+      background-color: transparent;
+      transition: transform 0.8s;
+    }
+
+    .flip .voteCard-inner {
+      position: absolute;
+      transform: rotate3d(0, -180, 0, 180deg);
+      transform-style: preserve-3d;
+    }
+
+    .card-front, .card-back {
+      position: absolute;
+      -webkit-backface-visibility: hidden; /* Safari */
+      backface-visibility: hidden;
+    }
+
+    .card-back {
+      transform: rotateY(180deg);
+    }
+
+    .card {
       position: absolute;
       top:50%;
       left:50%;
-      transform: translateX(-50%) translateY(-50%);
+    }
+    .spread .card0 {
+      transition: all 1s ease;
+      transform: rotate(-40deg) translateY(-50%);
+    }
+    .spread .card1 {
+      transition: all 1s ease;
+      transform: rotate(-20deg) translateY(-50%);
+    }
+    .spread .card2 {
+      transition: all 1s ease;
+      transform: translateY(-50%);
+    }
+    .spread .card3 {
+      transition: all 1s ease;
+      transform: rotate(20deg) translateY(-50%);
+    }
+    .spread .card4 {
+      transition: all 1s ease;
+      transform: rotate(40deg) translateY(-50%);
+    }
+    .spread .card5 {
+      transition: all 1s ease;
+      transform: rotate(60deg) translateY(-50%);
+    }
+    .spread .card6 {
+      transition: all 1s ease;
+      transform: rotate(80deg) translateY(-50%);
+    }
+    .spread .card7 {
+      transition: all 1s ease;
+      transform: rotate(100deg) translateY(-50%);
+    }
+    .spread .card8 {
+      transition: all 1s ease;
+      transform: rotate(120deg) translateY(-50%);
+    }
+    .spread .card9 {
+      transition: all 1s ease;
+      transform: rotate(140deg) translateY(-50%);
+    }
+    
+    .slide {
       animation: slide 1.0s;
     }
 
-
     @keyframes slide {
       from {
-        top:200%;
+      top:200%;
       }
       to {
-        top:50%;
+      top:50%;
       }
     }
-
 
     .players-name {
       align-self: center;
@@ -224,7 +277,9 @@
     <img src="/images/heart.png" id="heart4">
     <img src="/images/heart.png" id="heart5">
   </div>
-  <div class="voteCard"></div>
+  <div class="voteCard">
+    <div class="voteCard-inner"></div>
+  </div>
   <div id="voteContainer">
     <div id="voteMessage"></div>
     <div id="voteUser"></div>
@@ -353,7 +408,7 @@
     const TIMEOUT = 2;
     const SEC = 10;
     const MS = 3000;
-    const SYSMS = 3000;
+    const SYSMS = 5000;
     var voteCounter = 0;
     var votePlayers = [];
     var expPlayers = [];
@@ -400,6 +455,7 @@
         }
       }
     }
+
 
     function handleRound(players, number, round) {
       isSelected = false;
@@ -680,6 +736,7 @@
     socket.on('expedition-selection', (name, players, round)=> {
       //name: exp-leader
       //players: .id .userName
+      $(".cardState3").remove();
       $("#announcement").html("<div class='announce'><strong>" + name + '님이 원정대장입니다.<br>함께할 원정대원을 토의하세요.</strong></div>');
       $(".announce").addClass('fadeIn');
       timer(SEC);
@@ -731,15 +788,48 @@
       }, SYSMS);
     });
 
-    let cardCounter = 0;
-    socket.on('expedition-vote-card', () => {
-      $(".voteCard").append(`<img class="card" src="/images/testcard.png">`);
-      $(".card").addClass('gather');
-      cardCounter++
+
+    let voteYes = 0;
+    let voteNo = 0;
+    socket.on('expedition-vote-card', (vote) => {
+      if (vote == 1 || vote == 2) {
+        voteYes++;
+      } else if (vote == 0) {
+        voteNo++;
+      }
+      $(".voteCard").append(`<img class="cardState1 card" src="/images/testcard.png">`);
+      $(".card").addClass('slide');
+
     });
 
+    let cardCounter = 0;
     socket.on('expedition-vote-alert', (result, num = 0) => {
-      $(".voteCard").html('');
+      if (voteYes > 0) {
+        $(".voteCard-inner").append(`<img class="cardState2 card-front card" src="/images/testcard.png">`);
+        $(".voteCard-inner").append(`<img class="cardState2 card-back card" src="/images/testcard-yes.png">`);
+      } else if (voteYes == 0) {
+        $(".voteCard-inner").append(`<img class="cardState2 card-front card" src="/images/testcard.png">`);
+        $(".voteCard-inner").append(`<img class="cardState2 card-back card" src="/images/testcard-no.png">`);
+      }
+      $(".cardState1").remove();
+      setTimeout(() => {
+        $('.voteCard').addClass('flip');
+        setTimeout(() => {
+          for(voteYes;voteYes>0;voteYes--) {
+            $(".voteCard").append(`<img class="cardState3 card card` + cardCounter + `" src="/images/testcard-yes.png">`);
+          }
+          for(voteNo;voteNo>0;voteNo--) {
+            $(".voteCard").append(`<img class="cardState3 card card` + cardCounter + `" src="/images/testcard-no.png">`);
+          }
+          $(".cardState2").remove();
+          setTimeout(() => {
+            $('.card').addClass('spread');
+          }, 1000);
+        }, 1000);
+      }, 1000);
+
+
+      cardCounter = 0;
       if(result ==1) {
         $("#announcement").html("<div class='announce'><strong>원정 투표에 통과하였습니다!</strong></div>");
         $(".announce").addClass('fadeIn');
@@ -756,6 +846,7 @@
     });
 
     socket.on('expedition-vote-start-alert', () => {
+        $(".cardState3").remove();
         $("#announcement").html("<div class='announce'><strong>원정대원들이 성공/실패 여부를 결정중입니다...</strong></div>");
         $(".announce").addClass('fadeIn');
     })
@@ -766,12 +857,7 @@
         $("#voteUser").append(`<button onclick="emitExpResult(0)">실패</button>`);
     });
 
-    socket.on('expedition-exp-card', () => {
-      $(".voteCard").append(`<div>CARD</div>`);
-    });
-
     socket.on('expedition-exp-alert', (result, round) => {
-      $(".voteCard").html('');
       if(result == YES) {
         $("#announcement").html("<div class='announce'><strong>원정에 성공하였습니다!</strong></div>");
         $(".announce").addClass('fadeIn');
@@ -785,7 +871,7 @@
     });
 
 
-    //게임의 승리/패배 로직=
+    //게임의 승리/패배 로직
     socket.on('vote-fail-end', () => {
         $("#announcement").html("<div class='announce'><strong>투표에 다섯 번 실패했습니다! 모드레드와 그의 수하들이 승리합니다!</strong></div>");
         $(".announce").addClass('fadeIn');
